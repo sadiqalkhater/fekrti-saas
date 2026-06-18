@@ -1,0 +1,636 @@
+// prisma/schema.prisma
+// منصة فكرتي متعددة التجار - نظام محاسبي متكامل
+// Platform: Fekrti Multi-Vendor Marketplace
+// Author: صادق الخاطر - Sadiq AlKhater
+// Email: info@fekrti.sa
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// ==================== USERS & AUTHENTICATION ====================
+
+model User {
+  id            String   @id @default(cuid())
+  email         String   @unique
+  phone         String?
+  name          String
+  password      String
+  avatar        String?
+  role          UserRole @default(USER)
+  status        String   @default("active")
+  emailVerified DateTime?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  // Relations
+  vendor        Vendor?
+  projects      Project[]
+  proposals     Proposal[]
+  invoices      Invoice[]
+  receipts      Receipt[]
+  expenses      Expense[]
+  agreements    Agreement[]
+  services      Service[]
+  reviews       Review[]
+  favorites     Favorite[]
+  notifications Notification[]
+
+  @@index([email])
+  @@index([role])
+  @@map("users")
+}
+
+enum UserRole {
+  USER           // مستخدم عادي
+  VENDOR         // تاجر (صاحب متجر)
+  ADMIN          // مسؤول النظام
+  ACCOUNTANT     // محاسب
+  MODERATOR      // مشرف
+}
+
+// ==================== VENDORS (التجار) ====================
+
+model Vendor {
+  id              String   @id @default(cuid())
+  userId          String   @unique
+  businessName    String   // اسم العمل
+  slug            String   @unique // للـ URL
+  logo            String?
+  banner          String?
+  description     String?  @db.Text
+  phone           String?
+  email           String?
+  website         String?
+  address         String?
+  city            String?
+  country         String   @default("SA")
+  taxId           String?
+  bankName        String?
+  accountNumber   String?
+  ibanNumber      String?
+  
+  // التقييمات والإحصائيات
+  rating          Float    @default(5)
+  reviewCount     Int      @default(0)
+  totalEarnings   Float    @default(0)
+  totalProjects   Int      @default(0)
+  totalServices   Int      @default(0)
+  
+  // الحالة
+  status          VendorStatus @default(PENDING)
+  verified        Boolean  @default(false)
+  suspended       Boolean  @default(false)
+  
+  // البيانات
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  // Relations
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  projects        Project[]
+  services        Service[]
+  proposals       Proposal[]
+  invoices        Invoice[]
+  receipts        Receipt[]
+  expenses        Expense[]
+  agreements      Agreement[]
+  reviews         Review[]
+
+  @@unique([userId])
+  @@index([slug])
+  @@index([status])
+  @@map("vendors")
+}
+
+enum VendorStatus {
+  PENDING         // قيد الانتظار
+  APPROVED        // موافق
+  SUSPENDED       // موقوف
+  REJECTED        // مرفوض
+  INACTIVE        // غير نشط
+}
+
+// ==================== PROJECTS (المشاريع) ====================
+
+model Project {
+  id              String    @id @default(cuid())
+  vendorId        String
+  userId          String
+  title           String
+  description     String?   @db.Text
+  status          ProjectStatus @default(DRAFT)
+  
+  // التفاصيل
+  budget          Float?
+  currency        String    @default("SAR")
+  startDate       DateTime?
+  endDate         DateTime?
+  
+  // الحالة
+  completedAt     DateTime?
+  canceledAt      DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  // Relations
+  vendor          Vendor    @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  proposals       Proposal[]
+  invoices        Invoice[]
+  agreements      Agreement[]
+
+  @@index([vendorId])
+  @@index([userId])
+  @@index([status])
+  @@map("projects")
+}
+
+enum ProjectStatus {
+  DRAFT           // مسودة
+  ACTIVE          // نشط
+  PAUSED          // معلق
+  COMPLETED       // مكتمل
+  CANCELLED       // ملغى
+}
+
+// ==================== SERVICES (الخدمات في السوق) ====================
+
+model Service {
+  id              String    @id @default(cuid())
+  vendorId        String
+  userId          String
+  title           String
+  slug            String
+  description     String    @db.Text
+  category        String
+  image           String?
+  price           Float
+  currency        String    @default("SAR")
+  
+  // التفاصيل
+  duration        String?   // مثل: "3 ايام"
+  revisions       Int?      // عدد التعديلات
+  features        String[]  // مزايا الخدمة
+  
+  // الحالة
+  status          ServiceStatus @default(ACTIVE)
+  rating          Float    @default(5)
+  reviewCount     Int      @default(0)
+  orderCount      Int      @default(0)
+  
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  // Relations
+  vendor          Vendor    @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  reviews         Review[]
+  favorites       Favorite[]
+  orders          ServiceOrder[]
+
+  @@unique([vendorId, slug])
+  @@index([category])
+  @@index([status])
+  @@map("services")
+}
+
+enum ServiceStatus {
+  ACTIVE          // نشط
+  INACTIVE        // غير نشط
+  PAUSED          // معلق
+  RETIRED         // متقاعد
+}
+
+// ==================== SERVICE ORDERS ====================
+
+model ServiceOrder {
+  id              String    @id @default(cuid())
+  serviceId       String
+  vendorId        String
+  clientName      String
+  clientEmail     String
+  orderNumber     String    @unique
+  
+  amount          Float
+  currency        String    @default("SAR")
+  status          OrderStatus @default(PENDING)
+  
+  deliveryDate    DateTime?
+  completedAt     DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  // Relations
+  service         Service   @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+
+  @@index([vendorId])
+  @@index([status])
+  @@map("service_orders")
+}
+
+enum OrderStatus {
+  PENDING         // قيد الانتظار
+  CONFIRMED       // مؤكد
+  IN_PROGRESS     // قيد الإنجاز
+  DELIVERED       // تم التسليم
+  COMPLETED       // مكتمل
+  CANCELLED       // ملغى
+  DISPUTED        // متنازع عليه
+}
+
+// ==================== PROPOSALS (العروض) ====================
+
+model Proposal {
+  id              String    @id @default(cuid())
+  vendorId        String
+  userId          String
+  projectId       String?
+  proposalNumber  String    @unique
+  title           String
+  description     String?   @db.Text
+  status          ProposalStatus @default(DRAFT)
+  
+  // التسعير
+  subtotal        Float     @default(0)
+  taxAmount       Float     @default(0)
+  totalAmount     Float     @default(0)
+  taxRate         Float     @default(0.15)
+  currency        String    @default("SAR")
+  
+  // التواريخ
+  issueDate       DateTime  @default(now())
+  validUntilDate  DateTime
+  sentAt          DateTime?
+  acceptedAt      DateTime?
+  rejectedAt      DateTime?
+  
+  // المحتوى
+  sections        ProposalSection[]
+  notes           String?   @db.Text
+  terms           String?   @db.Text
+  
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  // Relations
+  vendor          Vendor    @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  project         Project?  @relation(fields: [projectId], references: [id], onDelete: SetNull)
+
+  @@unique([vendorId, proposalNumber])
+  @@index([vendorId])
+  @@index([status])
+  @@map("proposals")
+}
+
+enum ProposalStatus {
+  DRAFT           // مسودة
+  SENT            // مرسلة
+  VIEWED          // شوهدت
+  ACCEPTED        // مقبولة
+  REJECTED        // مرفوضة
+  EXPIRED         // انتهت صلاحيتها
+}
+
+model ProposalSection {
+  id              String    @id @default(cuid())
+  proposalId      String
+  title           String
+  description     String?   @db.Text
+  order           Int
+  items           ProposalItem[]
+  createdAt       DateTime  @default(now())
+
+  // Relations
+  proposal        Proposal  @relation(fields: [proposalId], references: [id], onDelete: Cascade)
+
+  @@index([proposalId])
+  @@map("proposal_sections")
+}
+
+model ProposalItem {
+  id              String    @id @default(cuid())
+  sectionId       String
+  description     String
+  quantity        Float     @default(1)
+  unitPrice       Float     @default(0)
+  amount          Float     @default(0)
+  order           Int       @default(0)
+  createdAt       DateTime  @default(now())
+
+  // Relations
+  section         ProposalSection @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+
+  @@index([sectionId])
+  @@map("proposal_items")
+}
+
+// ==================== INVOICES (الفواتير) ====================
+
+model Invoice {
+  id              String    @id @default(cuid())
+  vendorId        String
+  projectId       String?
+  invoiceNumber   String    @unique
+  invoiceDate     DateTime  @default(now())
+  dueDate         DateTime
+  
+  // البيانات
+  clientName      String
+  clientEmail     String?
+  clientPhone     String?
+  clientAddress   String?
+  
+  // التسعير
+  subtotal        Float     @default(0)
+  taxAmount       Float     @default(0)
+  totalAmount     Float     @default(0)
+  taxRate         Float     @default(0.15)
+  paidAmount      Float     @default(0)
+  currency        String    @default("SAR")
+  
+  status          InvoiceStatus @default(DRAFT)
+  items           InvoiceItem[]
+  payments        InvoicePayment[]
+  
+  notes           String?   @db.Text
+  
+  paidAt          DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  // Relations
+  vendor          Vendor    @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+  project         Project?  @relation(fields: [projectId], references: [id], onDelete: SetNull)
+
+  @@unique([vendorId, invoiceNumber])
+  @@index([vendorId])
+  @@index([status])
+  @@map("invoices")
+}
+
+enum InvoiceStatus {
+  DRAFT           // مسودة
+  SENT            // مرسلة
+  VIEWED          // شوهدت
+  PARTIALLY_PAID  // مدفوع جزئي
+  PAID            // مدفوع
+  OVERDUE         // متأخر
+  CANCELLED       // ملغى
+}
+
+model InvoiceItem {
+  id              String    @id @default(cuid())
+  invoiceId       String
+  description     String
+  quantity        Float
+  unitPrice       Float
+  amount          Float
+  createdAt       DateTime  @default(now())
+
+  // Relations
+  invoice         Invoice   @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  @@index([invoiceId])
+  @@map("invoice_items")
+}
+
+model InvoicePayment {
+  id              String    @id @default(cuid())
+  invoiceId       String
+  amount          Float
+  paymentDate     DateTime  @default(now())
+  method          String    // BANK_TRANSFER, CASH, CARD, CHECK
+  reference       String?   // رقم المرجع
+  notes           String?
+  createdAt       DateTime  @default(now())
+
+  // Relations
+  invoice         Invoice   @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  @@index([invoiceId])
+  @@map("invoice_payments")
+}
+
+// ==================== RECEIPTS (سندات القبض) ====================
+
+model Receipt {
+  id              String    @id @default(cuid())
+  vendorId        String
+  receiptNumber   String    @unique
+  receiptDate     DateTime  @default(now())
+  
+  // البيانات
+  paidBy          String    // اسم الدافع
+  amount          Float
+  currency        String    @default("SAR")
+  method          String    // طريقة الدفع
+  reference       String?   // رقم المرجع (شيك/تحويل)
+  
+  invoiceId       String?   // إذا كانت من فاتورة
+  notes           String?   @db.Text
+  
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  // Relations
+  vendor          Vendor    @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  userId          String
+
+  @@unique([vendorId, receiptNumber])
+  @@index([vendorId])
+  @@map("receipts")
+}
+
+// ==================== EXPENSES (سندات الصرف) ====================
+
+model Expense {
+  id              String    @id @default(cuid())
+  vendorId        String
+  expenseNumber   String    @unique
+  expenseDate     DateTime  @default(now())
+  
+  // البيانات
+  description     String
+  paidTo          String    // اسم المستفيد
+  amount          Float
+  currency        String    @default("SAR")
+  category        String    // تصنيف المصروف
+  method          String    // طريقة الدفع
+  reference       String?   // رقم المرجع
+  
+  notes           String?   @db.Text
+  attachments     String[]  // ملفات مرفقة
+  
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  // Relations
+  vendor          Vendor    @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  userId          String
+
+  @@unique([vendorId, expenseNumber])
+  @@index([vendorId])
+  @@index([category])
+  @@map("expenses")
+}
+
+// ==================== AGREEMENTS (الاتفاقيات) ====================
+
+model Agreement {
+  id              String    @id @default(cuid())
+  vendorId        String
+  projectId       String?
+  agreementNumber String    @unique
+  title           String
+  description     String?   @db.Text
+  
+  // البيانات
+  parties         String[]  // الأطراف
+  startDate       DateTime
+  endDate         DateTime
+  terms           String    @db.Text
+  
+  status          AgreementStatus @default(DRAFT)
+  signedAt        DateTime?
+  
+  attachments     String[]  // ملفات مرفقة (PDFs)
+  
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  // Relations
+  vendor          Vendor    @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+  project         Project?  @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  userId          String
+
+  @@unique([vendorId, agreementNumber])
+  @@index([vendorId])
+  @@index([status])
+  @@map("agreements")
+}
+
+enum AgreementStatus {
+  DRAFT           // مسودة
+  PENDING_SIGN    // قيد التوقيع
+  SIGNED          // موقع
+  ACTIVE          // نافذ
+  EXPIRED         // انتهى
+  TERMINATED      // ملغى
+}
+
+// ==================== REVIEWS (التقييمات والمراجعات) ====================
+
+model Review {
+  id              String    @id @default(cuid())
+  vendorId        String
+  serviceId       String?
+  userId          String
+  rating          Int       // 1-5
+  comment         String?   @db.Text
+  helpful         Int       @default(0)
+  
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  // Relations
+  vendor          Vendor    @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+  service         Service?  @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([vendorId])
+  @@index([serviceId])
+  @@map("reviews")
+}
+
+// ==================== FAVORITES (المفضلة) ====================
+
+model Favorite {
+  id              String    @id @default(cuid())
+  userId          String
+  serviceId       String
+  createdAt       DateTime  @default(now())
+
+  // Relations
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  service         Service   @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, serviceId])
+  @@index([userId])
+  @@map("favorites")
+}
+
+// ==================== NOTIFICATIONS (الإشعارات) ====================
+
+model Notification {
+  id              String    @id @default(cuid())
+  userId          String
+  type            NotificationType
+  title           String
+  message         String    @db.Text
+  data            String?   @db.Json // بيانات إضافية
+  read            Boolean   @default(false)
+  readAt          DateTime?
+  
+  createdAt       DateTime  @default(now())
+
+  // Relations
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([read])
+  @@map("notifications")
+}
+
+enum NotificationType {
+  PROPOSAL_SENT
+  PROPOSAL_ACCEPTED
+  INVOICE_CREATED
+  PAYMENT_RECEIVED
+  SERVICE_ORDER
+  REVIEW_RECEIVED
+  VENDOR_VERIFIED
+  SYSTEM_UPDATE
+}
+
+// ==================== SETTINGS ====================
+
+model VendorSettings {
+  id              String    @id @default(cuid())
+  vendorId        String    @unique
+  currency        String    @default("SAR")
+  taxRate         Float     @default(0.15)
+  language        String    @default("ar")
+  timezone        String    @default("Asia/Riyadh")
+  notificationsEnabled Boolean @default(true)
+  autoInvoiceNumber String  @default("INV-{YYYY}-{MM}-{COUNT}")
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@map("vendor_settings")
+}
+
+// ==================== SYSTEM SETTINGS ====================
+
+model SystemSettings {
+  id              String    @id @default(cuid())
+  platformName    String    @default("فكرتي - منصة الخدمات")
+  platformFee     Float     @default(0.1) // 10% = 0.1
+  taxRate         Float     @default(0.15)
+  maintenanceMode Boolean   @default(false)
+  updatedAt       DateTime  @updatedAt
+
+  @@map("system_settings")
+}

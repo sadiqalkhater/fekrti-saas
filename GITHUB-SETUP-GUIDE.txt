@@ -1,0 +1,761 @@
+╔═══════════════════════════════════════════════════════════════╗
+║  🚀 دليل تثبيت نظام فكرتي SaaS على GitHub                  ║
+║     خطوات شاملة من البداية حتى الدبلويمنت                     ║
+╚═══════════════════════════════════════════════════════════════╝
+
+
+📋 **المتطلبات الأساسية**
+═══════════════════════════════════════════════════════════════
+
+قبل البدء، تأكد من توفر:
+
+✅ حساب GitHub (free أو Pro)
+✅ Git مثبت على جهازك
+✅ Node.js 18+ و npm
+✅ محرر أكواد (VS Code مثلاً)
+✅ حساب Vercel (للنشر)
+✅ قاعدة بيانات PostgreSQL (Neon أو Supabase)
+
+
+═══════════════════════════════════════════════════════════════
+الخطوة 1️⃣ : إنشاء Repository على GitHub
+═══════════════════════════════════════════════════════════════
+
+1. اذهب إلى github.com
+2. سجل الدخول بحسابك
+3. اضغط "+" (الزاوية العليا اليسرى)
+4. اختر "New repository"
+
+ملئ البيانات:
+├─ Repository name: fekrti-saas
+├─ Description: نظام محاسبي متقدم - Financial Management SaaS
+├─ Visibility: Public (أو Private)
+├─ ✅ Initialize with README
+├─ ✅ Add .gitignore (Node)
+├─ ✅ Choose license (MIT)
+
+5. اضغط "Create repository"
+
+
+═══════════════════════════════════════════════════════════════
+الخطوة 2️⃣ : استنساخ المشروع محلياً
+═══════════════════════════════════════════════════════════════
+
+1. افتح Terminal/Command Prompt
+2. انقل إلى مجلد المشاريع:
+
+   cd /path/to/projects
+
+3. استنسخ المشروع:
+
+   git clone https://github.com/sadiqualkhater/fekrti-saas.git
+
+4. ادخل المجلد:
+
+   cd fekrti-saas
+
+
+═══════════════════════════════════════════════════════════════
+الخطوة 3️⃣ : إعداد بيئة العمل
+═══════════════════════════════════════════════════════════════
+
+【 تثبيت المكتبات 】
+
+npm install
+
+أو إذا كنت تستخدم yarn:
+
+yarn install
+
+
+【 إنشاء ملف البيئة 】
+
+أنشئ ملف .env.local في جذر المشروع:
+
+   touch .env.local
+
+أضف البيانات:
+
+   # Database
+   DATABASE_URL="postgresql://user:password@host:5432/fekrti"
+   
+   # JWT Secret
+   JWT_SECRET="your-secret-key-here-min-32-characters"
+   
+   # Payment Gateway (Moyasar)
+   NEXT_PUBLIC_MOYASAR_API_KEY="your-moyasar-key"
+   MOYASAR_SECRET_KEY="your-moyasar-secret"
+   
+   # Site URL
+   NEXT_PUBLIC_SITE_URL="http://localhost:3000"
+   
+   # Email Configuration
+   EMAIL_FROM="no-reply@fekrti.sa"
+   SMTP_HOST="smtp.gmail.com"
+   SMTP_PORT="587"
+   SMTP_USER="your-email@gmail.com"
+   SMTP_PASSWORD="your-app-password"
+
+
+═══════════════════════════════════════════════════════════════
+الخطوة 4️⃣ : إعداد قاعدة البيانات
+═══════════════════════════════════════════════════════════════
+
+【 خيار 1️⃣ : استخدام Neon (مجاني) 】
+
+1. اذهب إلى https://neon.tech
+2. سجل حساب جديد
+3. أنشئ project جديد
+4. انسخ رابط الاتصال: postgresql://...
+5. ضعه في DATABASE_URL بـ .env.local
+
+【 خيار 2️⃣ : استخدام Supabase 】
+
+1. اذهب إلى https://supabase.io
+2. أنشئ project جديد
+3. انتظر التفعيل (2-3 دقائق)
+4. انسخ Connection String
+5. ضعه في DATABASE_URL
+
+【 خيار 3️⃣ : PostgreSQL محلي 】
+
+إذا كنت تريد استخدام PostgreSQL محليًا:
+
+   # Windows
+   # ثبّت PostgreSQL من postgresql.org
+   
+   # Linux
+   sudo apt-get install postgresql postgresql-contrib
+   
+   # macOS
+   brew install postgresql
+
+
+【 تشغيل Migrations 】
+
+npx prisma migrate dev --name init
+
+هذا سينشئ جميع الجداول تلقائياً.
+
+
+═══════════════════════════════════════════════════════════════
+الخطوة 5️⃣ : هيكل المشروع الموصى به
+═══════════════════════════════════════════════════════════════
+
+fekrti-saas/
+│
+├── app/                          # Next.js App Router
+│   ├── (auth)/                  # صفحات التسجيل والدخول
+│   │   ├── login/page.tsx
+│   │   ├── register/page.tsx
+│   │   └── forgot-password/page.tsx
+│   │
+│   ├── (dashboard)/             # صفحات اللوحة الرئيسية
+│   │   ├── layout.tsx
+│   │   ├── page.tsx
+│   │   ├── invoices/
+│   │   ├── customers/
+│   │   ├── subscriptions/
+│   │   ├── payments/
+│   │   ├── reports/
+│   │   └── settings/
+│   │
+│   ├── api/                     # API Routes
+│   │   ├── auth/
+│   │   ├── invoices/
+│   │   ├── customers/
+│   │   ├── subscriptions/
+│   │   └── payments/
+│   │
+│   └── layout.tsx
+│
+├── components/                  # React Components
+│   ├── ui/
+│   ├── forms/
+│   ├── tables/
+│   ├── charts/
+│   └── layout/
+│
+├── lib/                         # Utility Functions
+│   ├── auth.ts                 # JWT & Authentication
+│   ├── db.ts                   # Database Connection
+│   ├── email.ts                # Email Service
+│   ├── payment.ts              # Payment Processing
+│   └── utils.ts                # General Utilities
+│
+├── prisma/
+│   ├── schema.prisma           # Database Schema
+│   └── seed.ts                 # Seed Data
+│
+├── public/
+│   ├── logo.svg
+│   └── images/
+│
+├── styles/
+│   └── globals.css
+│
+├── types/
+│   ├── index.ts
+│   ├── auth.ts
+│   └── api.ts
+│
+├── .env.local                  # Environment Variables (محلي فقط)
+├── .env.example                # مثال على المتغيرات
+├── .gitignore
+├── package.json
+├── tsconfig.json
+├── next.config.js
+├── tailwind.config.js
+├── postcss.config.js
+└── README.md
+
+
+═══════════════════════════════════════════════════════════════
+الخطوة 6️⃣ : إعداد Prisma ORM
+═══════════════════════════════════════════════════════════════
+
+【 ملف schema.prisma 】
+
+prisma/schema.prisma
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Models هنا
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  password  String
+  name      String
+  role      String   @default("user") // admin, user
+  companyId String
+  company   Company  @relation(fields: [companyId], references: [id])
+  invoices  Invoice[]
+  customers Customer[]
+  subscriptions Subscription[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Company {
+  id   String @id @default(cuid())
+  name String
+  logo String?
+  users User[]
+  invoices Invoice[]
+  customers Customer[]
+  subscriptions Subscription[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Invoice {
+  id        String   @id @default(cuid())
+  number    String   @unique
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  customerId String
+  customer  Customer @relation(fields: [customerId], references: [id])
+  companyId String
+  company   Company  @relation(fields: [companyId], references: [id])
+  amount    Float
+  tax       Float    @default(0)
+  dueDate   DateTime
+  paidDate  DateTime?
+  status    String   @default("draft") // draft, sent, paid, overdue
+  items     InvoiceItem[]
+  payments  Payment[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model InvoiceItem {
+  id        String @id @default(cuid())
+  invoiceId String
+  invoice   Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  description String
+  quantity  Float
+  unitPrice Float
+  total     Float
+}
+
+model Customer {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  companyId String
+  company   Company  @relation(fields: [companyId], references: [id])
+  name      String
+  email     String   @unique
+  phone     String?
+  address   String?
+  city      String?
+  country   String   @default("SA")
+  invoices  Invoice[]
+  subscriptions Subscription[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Subscription {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  customerId String
+  customer  Customer @relation(fields: [customerId], references: [id])
+  companyId String
+  company   Company  @relation(fields: [companyId], references: [id])
+  planName  String   // free, professional, enterprise
+  amount    Float
+  billingCycle String @default("monthly") // monthly, yearly
+  status    String   @default("active") // active, paused, cancelled
+  startDate DateTime
+  endDate   DateTime?
+  nextBillingDate DateTime
+  payments  Payment[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Payment {
+  id        String   @id @default(cuid())
+  invoiceId String?
+  invoice   Invoice? @relation(fields: [invoiceId], references: [id])
+  subscriptionId String?
+  subscription Subscription? @relation(fields: [subscriptionId], references: [id])
+  amount    Float
+  method    String // credit_card, bank_transfer, cash
+  status    String @default("pending") // pending, completed, failed
+  transactionId String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+
+═══════════════════════════════════════════════════════════════
+الخطوة 7️⃣ : إعداد package.json
+═══════════════════════════════════════════════════════════════
+
+{
+  "name": "fekrti-saas",
+  "version": "1.0.0",
+  "description": "نظام محاسبي متقدم - Financial Management SaaS",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "prisma:migrate": "prisma migrate dev",
+    "prisma:studio": "prisma studio",
+    "prisma:seed": "node prisma/seed.js"
+  },
+  "dependencies": {
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "next": "^14.0.0",
+    "@prisma/client": "^5.0.0",
+    "bcryptjs": "^2.4.3",
+    "jose": "^4.14.0",
+    "zod": "^3.22.0",
+    "tailwindcss": "^3.3.0",
+    "clsx": "^2.0.0",
+    "lucide-react": "^0.300.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.0.0",
+    "@types/react": "^18.2.0",
+    "@types/node": "^20.0.0",
+    "typescript": "^5.0.0",
+    "prisma": "^5.0.0"
+  }
+}
+
+
+═══════════════════════════════════════════════════════════════
+الخطوة 8️⃣ : الكود الأولي (مثال)
+═══════════════════════════════════════════════════════════════
+
+【 app/page.tsx 】
+
+export default function Home() {
+  return (
+    <main className="min-h-screen bg-gradient-to-b from-slate-900 to-slate-800">
+      <div className="container mx-auto px-4 py-16 text-center">
+        <h1 className="text-5xl font-bold text-white mb-4">
+          فكرتي - نظام محاسبي متقدم
+        </h1>
+        <p className="text-xl text-gray-300 mb-8">
+          إدارة الفواتير والعملاء والاشتراكات في مكان واحد
+        </p>
+        <a
+          href="/login"
+          className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-8 rounded-lg"
+        >
+          دخول النظام
+        </a>
+      </div>
+    </main>
+  )
+}
+
+【 app/api/auth/login/route.ts 】
+
+import { NextRequest, NextResponse } from 'next/server'
+import { prisma } from '@/lib/db'
+import { compare } from 'bcryptjs'
+import { SignJWT } from 'jose'
+
+const secret = new TextEncoder().encode(process.env.JWT_SECRET!)
+
+export async function POST(request: NextRequest) {
+  try {
+    const { email, password } = await request.json()
+
+    const user = await prisma.user.findUnique({
+      where: { email }
+    })
+
+    if (!user || !(await compare(password, user.password))) {
+      return NextResponse.json(
+        { error: 'بيانات غير صحيحة' },
+        { status: 401 }
+      )
+    }
+
+    const token = await new SignJWT({ userId: user.id })
+      .setProtectedHeader({ alg: 'HS256' })
+      .setExpirationTime('7d')
+      .sign(secret)
+
+    return NextResponse.json({ token, user })
+  } catch (error) {
+    return NextResponse.json(
+      { error: 'خطأ في السيرفر' },
+      { status: 500 }
+    )
+  }
+}
+
+
+═══════════════════════════════════════════════════════════════
+الخطوة 9️⃣ : رفع الملفات إلى GitHub
+═══════════════════════════════════════════════════════════════
+
+1. تأكد من أنك في مجلد المشروع:
+
+   cd fekrti-saas
+
+2. أضف جميع الملفات:
+
+   git add .
+
+3. اكتب رسالة commit:
+
+   git commit -m "feat: initial setup of fekrti saas system"
+
+4. ارفع إلى GitHub:
+
+   git push origin main
+
+💡 نصيحة: تأكد من أن .env.local في .gitignore!
+
+
+═══════════════════════════════════════════════════════════════
+الخطوة 🔟 : إعداد CI/CD مع GitHub Actions
+═══════════════════════════════════════════════════════════════
+
+أنشئ ملف: .github/workflows/deploy.yml
+
+name: Deploy to Vercel
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Install dependencies
+        run: npm install
+      
+      - name: Run tests
+        run: npm run lint
+      
+      - name: Build
+        run: npm run build
+      
+      - name: Deploy to Vercel
+        uses: vercel/action@v4
+        with:
+          vercel-token: ${{ secrets.VERCEL_TOKEN }}
+          vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
+          vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
+
+
+═══════════════════════════════════════════════════════════════
+الخطوة 1️⃣1️⃣ : النشر على Vercel
+═══════════════════════════════════════════════════════════════
+
+1. اذهب إلى https://vercel.com
+2. سجل بحساب GitHub
+3. اضغط "New Project"
+4. اختر "fekrti-saas"
+5. اضغط "Import"
+
+في الإعدادات:
+
+Environment Variables:
+├─ DATABASE_URL=...
+├─ JWT_SECRET=...
+├─ NEXT_PUBLIC_MOYASAR_API_KEY=...
+└─ (بقية المتغيرات)
+
+6. اضغط "Deploy"
+
+المشروع الآن متاح على:
+https://fekrti-saas.vercel.app
+
+
+═══════════════════════════════════════════════════════════════
+الخطوة 1️⃣2️⃣ : إنشاء ملف README احترافي
+═══════════════════════════════════════════════════════════════
+
+# فكرتي - نظام محاسبي SaaS
+
+نظام محاسبة حديث وآمن مبني على Next.js و PostgreSQL
+
+## 🎯 المميزات
+
+✅ إدارة الفواتير والعملاء
+✅ الاشتراكات والدفع التكراري
+✅ تقارير مالية فورية
+✅ نظام متعدد المستأجرين
+✅ أمان عالي جداً
+✅ واجهة احترافية
+
+## 🛠️ التقنيات المستخدمة
+
+- **Frontend**: Next.js 14, React 18, Tailwind CSS
+- **Backend**: Next.js API Routes, Prisma ORM
+- **Database**: PostgreSQL (Neon/Supabase)
+- **Authentication**: JWT, bcryptjs
+- **Payment**: Moyasar
+- **Hosting**: Vercel
+- **Language**: TypeScript
+
+## 🚀 البدء السريع
+
+```bash
+# استنسخ المشروع
+git clone https://github.com/sadiqualkhater/fekrti-saas.git
+cd fekrti-saas
+
+# ثبّت المكتبات
+npm install
+
+# أنشئ ملف البيئة
+cp .env.example .env.local
+
+# شغّل قاعدة البيانات
+npx prisma migrate dev
+
+# شغّل التطبيق
+npm run dev
+```
+
+الموقع: http://localhost:3000
+
+## 📦 المتطلبات
+
+- Node.js 18+
+- npm أو yarn
+- PostgreSQL (يمكن استخدام Neon مجاني)
+
+## 📄 الترخيص
+
+MIT License - انظر LICENSE.md
+
+## 📞 التواصل
+
+- الموقع: www.fekrti.sa
+- البريد: info@fekrti.sa
+- الهاتف: +966 548 187 999
+
+---
+
+Made with ❤️ by Fekrti Consulting
+
+
+═══════════════════════════════════════════════════════════════
+الخطوة 1️⃣3️⃣ : إعدادات GitHub الإضافية
+═══════════════════════════════════════════════════════════════
+
+1. اذهب إلى Settings في المستودع
+2. Branch protection:
+   ├─ اختر main
+   ├─ Require pull request reviews
+   └─ Dismiss stale pull requests
+3. Secrets & Variables:
+   ├─ أضف VERCEL_TOKEN
+   ├─ أضف VERCEL_ORG_ID
+   └─ أضف VERCEL_PROJECT_ID
+4. Pages:
+   ├─ اختر "Deploy from a branch"
+   └─ اختر main
+
+
+═══════════════════════════════════════════════════════════════
+الخطوة 1️⃣4️⃣ : ملف .env.example
+═══════════════════════════════════════════════════════════════
+
+أنشئ .env.example (بدون القيم الحقيقية):
+
+# Database
+DATABASE_URL=postgresql://user:password@host:5432/fekrti
+
+# JWT
+JWT_SECRET=your-secret-key-min-32-characters
+
+# Moyasar Payment Gateway
+NEXT_PUBLIC_MOYASAR_API_KEY=your-public-key
+MOYASAR_SECRET_KEY=your-secret-key
+
+# Site
+NEXT_PUBLIC_SITE_URL=http://localhost:3000
+
+# Email
+EMAIL_FROM=no-reply@fekrti.sa
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USER=your-email@gmail.com
+SMTP_PASSWORD=your-app-password
+
+
+═══════════════════════════════════════════════════════════════
+الخطوة 1️⃣5️⃣ : ملف .gitignore
+═══════════════════════════════════════════════════════════════
+
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# Production
+.next/
+out/
+build/
+
+# Misc
+*.pem
+.DS_Store
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Prisma
+prisma/dev.db
+
+
+═══════════════════════════════════════════════════════════════
+نصائح مهمة
+═══════════════════════════════════════════════════════════════
+
+✅ استخدم Conventional Commits:
+   - feat: مميزة جديدة
+   - fix: إصلاح bug
+   - docs: توثيق
+   - style: تنسيق الكود
+   - refactor: إعادة هيكلة
+
+✅ اكتب اختبارات للكود
+✅ استخدم برانشات منفصلة للمميزات
+✅ اطلب Code Review قبل الدمج
+✅ حافظ على البيئات منفصلة (dev, staging, prod)
+✅ سجل جميع التغييرات الكبيرة
+✅ استخدم semantic versioning
+
+
+═══════════════════════════════════════════════════════════════
+الأوامر المفيدة
+═══════════════════════════════════════════════════════════════
+
+# عرض سجل التغييرات
+git log --oneline
+
+# إنشاء فرع جديد
+git checkout -b feature/new-feature
+
+# التحديث من main
+git pull origin main
+
+# دمج الفرع
+git merge feature/new-feature
+
+# نشر الفرع
+git push origin feature/new-feature
+
+# فتح Pull Request على GitHub
+
+# حذف فرع محلي
+git branch -d feature/new-feature
+
+# حذف فرع بعيد
+git push origin --delete feature/new-feature
+
+
+═══════════════════════════════════════════════════════════════
+التالي بعد التثبيت
+═══════════════════════════════════════════════════════════════
+
+1. ✅ تثبيت النظام على GitHub
+2. ⏭️ تطوير الميزات الأساسية
+3. ⏭️ كتابة الاختبارات
+4. ⏭️ النشر على Vercel
+5. ⏭️ إعداد المراقبة (Monitoring)
+6. ⏭️ تسويق النظام
+7. ⏭️ الحصول على العملاء الأوائل
+
+
+═══════════════════════════════════════════════════════════════
+للمزيد من المساعدة
+═══════════════════════════════════════════════════════════════
+
+📚 الموارد المفيدة:
+  • https://nextjs.org/docs
+  • https://www.prisma.io/docs
+  • https://github.com/docs
+  • https://vercel.com/docs
+
+📞 التواصل:
+  • info@fekrti.sa
+  • +966 548 187 999
+  • www.fekrti.sa
+
+═══════════════════════════════════════════════════════════════
+
+✅ تم! النظام الآن على GitHub وجاهز للتطوير!
+
+═══════════════════════════════════════════════════════════════
