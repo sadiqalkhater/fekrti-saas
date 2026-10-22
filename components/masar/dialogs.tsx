@@ -56,7 +56,7 @@ export function NewBoardForm({ onCreated }: { onCreated?: () => void }) {
         </div>
         <div className="tpls" role="radiogroup" aria-label="قالب اللوحة">
           {TEMPLATES.map((t) => (
-            <button key={t.id} className="tpl" role="radio" aria-checked={tpl === t.id} aria-pressed={tpl === t.id} onClick={() => setTpl(t.id)}>
+            <button key={t.id} className="tpl" role="radio" aria-checked={tpl === t.id} onClick={() => setTpl(t.id)}>
               <b>{t.name}</b>
               <small>{t.lists.join(' ← ')}</small>
             </button>

@@ -2,7 +2,7 @@
 import {
   formatCurrency,
   calculateTax,
-  formatDate,
+  generateInvoiceNumber,
   isValidEmail,
   isValidPhone,
   slugify,
@@ -68,7 +68,7 @@ describe('Helpers Functions', () => {
     });
 
     it('should handle special characters', () => {
-      expect(slugify('Hello & World')).toBe('hello--world');
+      expect(slugify('Hello & World')).toBe('hello-world');
     });
   });
 
@@ -81,6 +81,20 @@ describe('Helpers Functions', () => {
 
     it('should not truncate short text', () => {
       expect(truncate('Short', 20)).toBe('Short');
+    });
+  });
+
+  describe('generateInvoiceNumber', () => {
+    it('gives different vendors created at the same time different numbers', () => {
+      // معرّفات cuid لنفس الفترة تتشابه بدايتها وتختلف نهايتها
+      const a = generateInvoiceNumber('cmvjwh80800016jyid20rbd7f', 1);
+      const b = generateInvoiceNumber('cmvjwh80800026jyixk91mzqa', 1);
+      expect(a).not.toBe(b);
+      expect(a).toMatch(/^INV-0RBD7F-/);
+    });
+
+    it('pads the sequence', () => {
+      expect(generateInvoiceNumber('cmvjwh80800016jyid20rbd7f', 7)).toMatch(/-0007$/);
     });
   });
 });

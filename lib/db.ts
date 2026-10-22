@@ -1,7 +1,7 @@
 // lib/db.ts
 // إدارة قاعدة البيانات والاتصال
 
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient, VendorStatus } from '@prisma/client';
 
 // Prevent multiple instances of Prisma Client in development
 const globalForPrisma = globalThis as unknown as { prisma: PrismaClient };
@@ -148,7 +148,7 @@ export const vendorQueries = {
   /**
    * الحصول على جميع التجار (للسوق)
    */
-  findAll: (skip = 0, take = 10, status = 'APPROVED') =>
+  findAll: (skip = 0, take = 10, status: VendorStatus = 'APPROVED') =>
     prisma.vendor.findMany({
       where: { status },
       skip,

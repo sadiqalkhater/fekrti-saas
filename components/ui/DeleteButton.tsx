@@ -20,7 +20,7 @@ export default function DeleteButton({ onDelete, className = '' }: DeleteButtonP
       toast.success('تم الحذف بنجاح');
       setShowConfirm(false);
     } catch (error) {
-      toast.error('خطأ في الحذف');
+      toast.error(error instanceof Error && error.message ? error.message : 'خطأ في الحذف');
     } finally {
       setLoading(false);
     }

@@ -23,7 +23,15 @@
 cp .env.example .env      # اضبط DATABASE_URL و JWT_SECRET
 npm install
 npm run db:push           # ينشئ الجداول الجديدة
+npm run db:seed           # اختياري: بيانات تجريبية للسوق (يحذف المستخدمين الحاليين!)
 npm run dev               # ثم افتح http://localhost:3000/register
+```
+
+الاختبارات:
+
+```bash
+npm test                                         # اختبارات الوحدة
+TEST_API_URL=http://localhost:3000 npm test      # ومعها اختبارات API على خادم يعمل
 ```
 
 | المتغير | الوصف |

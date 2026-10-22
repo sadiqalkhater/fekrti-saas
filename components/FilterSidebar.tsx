@@ -2,6 +2,8 @@
 // components/FilterSidebar.tsx
 'use client';
 
+import { formatCurrency } from '@/utils/helpers';
+
 interface FilterSidebarProps {
   priceRange: [number, number];
   onPriceChange: (range: [number, number]) => void;
@@ -29,8 +31,8 @@ export default function FilterSidebar({
           className="w-full"
         />
         <div className="flex justify-between mt-2 text-sm">
-          <span>{priceRange[0].toLocaleString('ar-SA')} ر.س</span>
-          <span>{priceRange[1].toLocaleString('ar-SA')} ر.س</span>
+          <span>{formatCurrency(priceRange[0], 'SAR')}</span>
+          <span>{formatCurrency(priceRange[1], 'SAR')}</span>
         </div>
       </div>
 

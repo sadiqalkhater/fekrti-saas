@@ -37,7 +37,7 @@ async function main() {
     },
   });
 
-  const user3 = await prisma.user.create({
+  await prisma.user.create({
     data: {
       email: 'admin@fekrti.sa',
       name: 'صادق الخاطر',
@@ -120,7 +120,7 @@ async function main() {
     },
   });
 
-  const service2 = await prisma.service.create({
+  await prisma.service.create({
     data: {
       vendorId: vendor2.id,
       userId: user2.id,
@@ -162,7 +162,7 @@ async function main() {
 
   // ==================== CREATE PROPOSALS ====================
 
-  const proposal1 = await prisma.proposal.create({
+  await prisma.proposal.create({
     data: {
       vendorId: vendor1.id,
       userId: user1.id,
@@ -236,7 +236,7 @@ async function main() {
 
   // ==================== CREATE INVOICES ====================
 
-  const invoice1 = await prisma.invoice.create({
+  await prisma.invoice.create({
     data: {
       vendorId: vendor1.id,
       projectId: project1.id,
@@ -276,7 +276,7 @@ async function main() {
 
   // ==================== CREATE RECEIPTS ====================
 
-  const receipt1 = await prisma.receipt.create({
+  await prisma.receipt.create({
     data: {
       vendorId: vendor1.id,
       userId: user1.id,
@@ -295,7 +295,7 @@ async function main() {
 
   // ==================== CREATE EXPENSES ====================
 
-  const expense1 = await prisma.expense.create({
+  await prisma.expense.create({
     data: {
       vendorId: vendor1.id,
       userId: user1.id,
@@ -315,7 +315,7 @@ async function main() {
 
   // ==================== CREATE REVIEWS ====================
 
-  const review1 = await prisma.review.create({
+  await prisma.review.create({
     data: {
       vendorId: vendor1.id,
       serviceId: service1.id,

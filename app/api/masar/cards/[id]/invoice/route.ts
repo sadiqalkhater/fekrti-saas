@@ -5,7 +5,7 @@ import { z } from 'zod';
 import { prisma } from '@/lib/db';
 import { handle, HttpError, ok, parseBody, requireUser } from '@/lib/masar/http';
 import { logActivity, requireCard, touchBoard } from '@/lib/masar/service';
-import { generateInvoiceNumber } from '@/utils/helpers';
+import { createWithInvoiceNumber } from '@/lib/invoices';
 
 type Ctx = { params: { id: string } };
 
@@ -28,14 +28,14 @@ export const POST = handle(async (request: Request, { params }: Ctx) => {
   const taxRate = settings?.taxRate ?? 0.15;
   const subtotal = Math.round(body.amount * 100) / 100;
   const taxAmount = Math.round(subtotal * taxRate * 100) / 100;
-  const count = await prisma.invoice.count({ where: { vendorId: workspace.vendorId } });
   const dueDate = new Date();
   dueDate.setDate(dueDate.getDate() + 14);
 
-  const invoice = await prisma.invoice.create({
+  const vendorId = workspace.vendorId;
+  const invoice = await createWithInvoiceNumber(vendorId, (invoiceNumber) => prisma.invoice.create({
     data: {
-      vendorId: workspace.vendorId,
-      invoiceNumber: generateInvoiceNumber(workspace.vendorId, count + 1),
+      vendorId,
+      invoiceNumber,
       dueDate,
       clientName: body.clientName,
       subtotal,
@@ -49,7 +49,7 @@ export const POST = handle(async (request: Request, { params }: Ctx) => {
       },
       cards: { connect: { id: card.id } },
     },
-  });
+  }));
   await logActivity({
     boardId: board.id,
     cardId: card.id,

@@ -1,139 +1,75 @@
 // app/api/vendors/[id]/route.ts
-// API لجلب وتحديث بيانات التاجر
+// صفحة التاجر العامة، وتحديث بياناته أو حذفه لصاحبه فقط
 
-import { NextRequest, NextResponse } from 'next/server';
+import { z } from 'zod';
 import { prisma } from '@/lib/db';
+import { getSessionUserId } from '@/lib/auth';
+import { handle, HttpError, ok, parseBody, requireUser } from '@/lib/masar/http';
+
+type Ctx = { params: { id: string } };
+export const dynamic = 'force-dynamic';
 
 // ==================== GET /api/vendors/[id] ====================
 
-export async function GET(
-  request: NextRequest,
-  { params }: { params: { id: string } }
-) {
-  try {
-    const vendor = await prisma.vendor.findUnique({
-      where: { id: params.id },
-      include: {
-        user: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-            avatar: true,
-            phone: true,
-          },
-        },
-        services: {
-          where: { status: 'ACTIVE' },
-          take: 5,
-        },
-        reviews: {
-          take: 5,
-        },
-      },
-    });
+export const GET = handle(async (_req: Request, { params }: Ctx) => {
+  const vendor = await prisma.vendor.findUnique({
+    where: { id: params.id },
+    include: {
+      user: { select: { id: true, name: true, avatar: true } },
+      services: { where: { status: 'ACTIVE' }, take: 5 },
+      reviews: { take: 5, orderBy: { createdAt: 'desc' } },
+    },
+  });
+  if (!vendor) throw new HttpError(404, 'التاجر غير موجود');
 
-    if (!vendor) {
-      return NextResponse.json(
-        { error: 'التاجر غير موجود' },
-        { status: 404 }
-      );
-    }
-
-    return NextResponse.json(vendor);
-  } catch (error) {
-    console.error('Error fetching vendor:', error);
-    return NextResponse.json(
-      { error: 'خطأ في الخادم' },
-      { status: 500 }
-    );
+  // البيانات البنكية والضريبية لصاحب المتجر فقط
+  if ((await getSessionUserId()) !== vendor.userId) {
+    const { bankName: _b, accountNumber: _a, ibanNumber: _i, taxId: _t, ...publicVendor } = vendor;
+    return ok(publicVendor);
   }
-}
+  return ok(vendor);
+});
 
 // ==================== PUT /api/vendors/[id] ====================
 
-export async function PUT(
-  request: NextRequest,
-  { params }: { params: { id: string } }
-) {
-  try {
-    const body = await request.json();
+const optional = (max: number) => z.string().trim().max(max).optional().nullable();
+const schema = z.object({
+  businessName: z.string().trim().min(2, 'اسم النشاط قصير').max(120).optional(),
+  description: optional(5000),
+  phone: optional(30),
+  email: z.string().trim().email('البريد غير صحيح').optional().nullable().or(z.literal('')),
+  website: optional(200),
+  address: optional(300),
+  city: optional(80),
+  country: z.string().trim().length(2).optional(),
+  taxId: optional(30),
+  bankName: optional(80),
+  accountNumber: optional(40),
+  ibanNumber: optional(40),
+  logo: optional(500),
+  banner: optional(500),
+});
 
-    // التحقق من الصلاحيات (يجب أن يكون التاجر هو صاحب الحساب)
-    const vendor = await prisma.vendor.findUnique({
-      where: { id: params.id },
-    });
-
-    if (!vendor) {
-      return NextResponse.json(
-        { error: 'التاجر غير موجود' },
-        { status: 404 }
-      );
-    }
-
-    // تحديث البيانات
-    const updatedVendor = await prisma.vendor.update({
-      where: { id: params.id },
-      data: {
-        businessName: body.businessName,
-        description: body.description,
-        phone: body.phone,
-        email: body.email,
-        website: body.website,
-        address: body.address,
-        city: body.city,
-        country: body.country,
-        taxId: body.taxId,
-        bankName: body.bankName,
-        accountNumber: body.accountNumber,
-        ibanNumber: body.ibanNumber,
-        logo: body.logo,
-        banner: body.banner,
-      },
-      include: { user: true },
-    });
-
-    return NextResponse.json(updatedVendor);
-  } catch (error) {
-    console.error('Error updating vendor:', error);
-    return NextResponse.json(
-      { error: 'خطأ في تحديث البيانات' },
-      { status: 500 }
-    );
-  }
+async function ownVendor(id: string) {
+  const me = await requireUser();
+  const vendor = await prisma.vendor.findUnique({ where: { id } });
+  if (!vendor) throw new HttpError(404, 'التاجر غير موجود');
+  if (vendor.userId !== me.id) throw new HttpError(403, 'لا تملك صلاحية لهذا المتجر');
+  return vendor;
 }
+
+export const PUT = handle(async (request: Request, { params }: Ctx) => {
+  await ownVendor(params.id);
+  const body = await parseBody(request, schema);
+  const data = Object.fromEntries(Object.entries(body).map(([k, v]) => [k, v === '' ? null : v]));
+  const updated = await prisma.vendor.update({ where: { id: params.id }, data });
+  return ok(updated);
+});
 
 // ==================== DELETE /api/vendors/[id] ====================
 
-export async function DELETE(
-  request: NextRequest,
-  { params }: { params: { id: string } }
-) {
-  try {
-    // حذف التاجر وجميع بيانات المشاريع والخدمات
-    const vendor = await prisma.vendor.findUnique({
-      where: { id: params.id },
-      select: { userId: true },
-    });
-
-    if (!vendor) {
-      return NextResponse.json(
-        { error: 'التاجر غير موجود' },
-        { status: 404 }
-      );
-    }
-
-    // حذف التاجر (سيحذف تلقائياً جميع البيانات المرتبطة)
-    await prisma.vendor.delete({
-      where: { id: params.id },
-    });
-
-    return NextResponse.json({ message: 'تم حذف التاجر بنجاح' });
-  } catch (error) {
-    console.error('Error deleting vendor:', error);
-    return NextResponse.json(
-      { error: 'خطأ في حذف البيانات' },
-      { status: 500 }
-    );
-  }
-}
+export const DELETE = handle(async (_req: Request, { params }: Ctx) => {
+  await ownVendor(params.id);
+  await prisma.vendor.delete({ where: { id: params.id } });
+  return ok({ message: 'تم حذف المتجر بنجاح' });
+});
