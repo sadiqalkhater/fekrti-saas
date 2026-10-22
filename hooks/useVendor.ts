@@ -6,158 +6,100 @@
 import { useState, useCallback, useEffect } from 'react';
 import axios from 'axios';
 import toast from 'react-hot-toast';
-import { Vendor, Project, Service, Proposal, Invoice } from '@/types';
+import { Service, Vendor } from '@/types';
 
-interface UseVendorReturn {
-  vendor: Vendor | null;
-  loading: boolean;
-  error: string | null;
-  projects: Project[];
-  services: Service[];
-  proposals: Proposal[];
-  invoices: Invoice[];
-  stats: {
-    totalProjects: number;
-    totalServices: number;
-    totalProposals: number;
-    totalInvoices: number;
-    totalRevenue: number;
-  } | null;
-  
-  // Methods
-  fetchVendor: (vendorId: string) => Promise<void>;
-  updateVendor: (data: Partial<Vendor>) => Promise<void>;
-  fetchProjects: () => Promise<void>;
-  fetchServices: () => Promise<void>;
-  fetchProposals: () => Promise<void>;
-  fetchInvoices: () => Promise<void>;
-  getStats: () => Promise<void>;
+export interface VendorStats {
+  totalProjects: number;
+  totalServices: number;
+  totalProposals: number;
+  totalInvoices: number;
+  totalRevenue: number;
+  monthlyRevenue: { month: string; revenue: number }[];
 }
 
-export function useVendor(vendorId?: string): UseVendorReturn {
-  const [vendor, setVendor] = useState<Vendor | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [projects, setProjects] = useState<Project[]>([]);
-  const [services, setServices] = useState<Service[]>([]);
-  const [proposals, setProposals] = useState<Proposal[]>([]);
-  const [invoices, setInvoices] = useState<Invoice[]>([]);
-  const [stats, setStats] = useState<any>(null);
+export function apiError(err: unknown, fallback: string): string {
+  if (axios.isAxiosError(err)) return err.response?.data?.error || fallback;
+  return fallback;
+}
 
-  // جلب بيانات التاجر
-  const fetchVendor = useCallback(async (id: string) => {
+/**
+ * متجر المستخدم الحالي وإحصائياته.
+ * `hasVendor` تكون false عندما لا يملك المستخدم متجرًا بعد.
+ */
+export function useVendor() {
+  const [vendor, setVendor] = useState<Vendor | null>(null);
+  const [stats, setStats] = useState<VendorStats | null>(null);
+  const [topServices, setTopServices] = useState<Service[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [hasVendor, setHasVendor] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const refresh = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const response = await axios.get(`/api/vendors/${id}`);
-      setVendor(response.data);
-    } catch (err: any) {
-      const message = err.response?.data?.error || 'خطأ في تحميل البيانات';
-      setError(message);
-      toast.error(message);
+      const response = await axios.get<{ vendor: Vendor; stats: VendorStats; topServices: Service[] }>('/api/vendors/me');
+      setVendor(response.data.vendor);
+      setStats(response.data.stats);
+      setTopServices(response.data.topServices);
+      setHasVendor(true);
+    } catch (err) {
+      if (axios.isAxiosError(err) && err.response?.status === 404) {
+        setHasVendor(false);
+      } else if (axios.isAxiosError(err) && err.response?.status === 401) {
+        window.location.href = `/login?next=${encodeURIComponent(window.location.pathname)}`;
+      } else {
+        const message = apiError(err, 'خطأ في تحميل البيانات');
+        setError(message);
+        toast.error(message);
+      }
     } finally {
       setLoading(false);
     }
   }, []);
 
-  // تحديث بيانات التاجر
-  const updateVendor = useCallback(async (data: Partial<Vendor>) => {
-    try {
-      const response = await axios.put(`/api/vendors/${vendor?.id}`, data);
-      setVendor(response.data);
-      toast.success('تم تحديث البيانات بنجاح');
-    } catch (err: any) {
-      const message = err.response?.data?.error || 'خطأ في التحديث';
-      toast.error(message);
-      throw err;
-    }
-  }, [vendor?.id]);
-
-  // جلب المشاريع
-  const fetchProjects = useCallback(async () => {
-    if (!vendor?.id) return;
-    try {
-      const response = await axios.get(`/api/vendors/${vendor.id}/projects`);
-      setProjects(response.data);
-    } catch (err) {
-      console.error('Error fetching projects:', err);
-    }
-  }, [vendor?.id]);
-
-  // جلب الخدمات
-  const fetchServices = useCallback(async () => {
-    if (!vendor?.id) return;
-    try {
-      const response = await axios.get(`/api/vendors/${vendor.id}/services`);
-      setServices(response.data);
-    } catch (err) {
-      console.error('Error fetching services:', err);
-    }
-  }, [vendor?.id]);
-
-  // جلب العروض
-  const fetchProposals = useCallback(async () => {
-    if (!vendor?.id) return;
-    try {
-      const response = await axios.get(`/api/vendors/${vendor.id}/proposals`);
-      setProposals(response.data);
-    } catch (err) {
-      console.error('Error fetching proposals:', err);
-    }
-  }, [vendor?.id]);
-
-  // جلب الفواتير
-  const fetchInvoices = useCallback(async () => {
-    if (!vendor?.id) return;
-    try {
-      const response = await axios.get(`/api/vendors/${vendor.id}/invoices`);
-      setInvoices(response.data);
-    } catch (err) {
-      console.error('Error fetching invoices:', err);
-    }
-  }, [vendor?.id]);
-
-  // جلب الإحصائيات
-  const getStats = useCallback(async () => {
-    if (!vendor?.id) return;
-    try {
-      const response = await axios.get(`/api/vendors/${vendor.id}/stats`);
-      setStats(response.data);
-    } catch (err) {
-      console.error('Error fetching stats:', err);
-    }
-  }, [vendor?.id]);
-
-  // جلب البيانات عند التحميل
   useEffect(() => {
-    if (vendorId) {
-      fetchVendor(vendorId);
-    }
-  }, [vendorId, fetchVendor]);
+    refresh();
+  }, [refresh]);
 
-  return {
-    vendor,
-    loading,
-    error,
-    projects,
-    services,
-    proposals,
-    invoices,
-    stats,
-    fetchVendor,
-    updateVendor,
-    fetchProjects,
-    fetchServices,
-    fetchProposals,
-    fetchInvoices,
-    getStats,
-  };
+  // تحديث بيانات التاجر
+  const updateVendor = useCallback(
+    async (data: Partial<Vendor>) => {
+      if (!vendor) return;
+      try {
+        const response = await axios.put<Vendor>(`/api/vendors/${vendor.id}`, data);
+        setVendor(response.data);
+        toast.success('تم تحديث البيانات بنجاح');
+      } catch (err) {
+        toast.error(apiError(err, 'خطأ في التحديث'));
+        throw err;
+      }
+    },
+    [vendor],
+  );
+
+  // إنشاء متجر لمستخدم ليس لديه متجر
+  const createVendor = useCallback(
+    async (data: Partial<Vendor>) => {
+      try {
+        await axios.post('/api/vendors', data);
+        toast.success('تم إنشاء متجرك');
+        await refresh();
+      } catch (err) {
+        toast.error(apiError(err, 'خطأ في إنشاء المتجر'));
+        throw err;
+      }
+    },
+    [refresh],
+  );
+
+  return { vendor, stats, topServices, loading, hasVendor, error, refresh, updateVendor, createVendor };
 }
 
 // ==================== useAuth Hook ====================
 
 export function useAuth() {
-  const [user, setUser] = useState(null);
+  const [user, setUser] = useState<{ id: string; name: string; email: string; avatar: string | null } | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -166,7 +108,7 @@ export function useAuth() {
       try {
         const response = await axios.get('/api/auth/me');
         setUser(response.data);
-      } catch (err) {
+      } catch {
         setUser(null);
       } finally {
         setLoading(false);
@@ -180,7 +122,7 @@ export function useAuth() {
     try {
       await axios.post('/api/auth/logout');
       setUser(null);
-    } catch (err) {
+    } catch {
       toast.error('خطأ في تسجيل الخروج');
     }
   }, []);
@@ -197,10 +139,11 @@ export function useFavorites() {
   const fetchFavorites = useCallback(async () => {
     setLoading(true);
     try {
-      const response = await axios.get('/api/favorites');
-      setFavorites(response.data.map((fav: any) => fav.serviceId));
-    } catch (err) {
-      console.error('Error fetching favorites:', err);
+      const response = await axios.get<{ serviceId: string }[]>('/api/favorites');
+      setFavorites(response.data.map((fav) => fav.serviceId));
+    } catch {
+      // الزائر غير المسجّل ليس له مفضلة
+      setFavorites([]);
     } finally {
       setLoading(false);
     }
@@ -212,7 +155,8 @@ export function useFavorites() {
       setFavorites((prev) => [...prev, serviceId]);
       toast.success('تمت الإضافة إلى المفضلة');
     } catch (err) {
-      toast.error('خطأ في الإضافة');
+      const status = axios.isAxiosError(err) ? err.response?.status : undefined;
+      toast.error(status === 401 ? 'سجّل الدخول لحفظ المفضلة' : 'خطأ في الإضافة');
     }
   }, []);
 
@@ -221,7 +165,7 @@ export function useFavorites() {
       await axios.delete(`/api/favorites/${serviceId}`);
       setFavorites((prev) => prev.filter((id) => id !== serviceId));
       toast.success('تم الحذف من المفضلة');
-    } catch (err) {
+    } catch {
       toast.error('خطأ في الحذف');
     }
   }, []);

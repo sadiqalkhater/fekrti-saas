@@ -32,7 +32,6 @@ model User {
   vendor        Vendor?
   projects      Project[]
   proposals     Proposal[]
-  invoices      Invoice[]
   receipts      Receipt[]
   expenses      Expense[]
   agreements    Agreement[]
@@ -40,6 +39,12 @@ model User {
   reviews       Review[]
   favorites     Favorite[]
   notifications Notification[]
+
+  // مسار
+  workspaceMemberships WorkspaceMember[]
+  cardsCreated         Card[]          @relation("CardCreator")
+  cardAssignments      CardAssignee[]
+  cardActivities       CardActivity[]
 
   @@index([email])
   @@index([role])
@@ -101,8 +106,8 @@ model Vendor {
   expenses        Expense[]
   agreements      Agreement[]
   reviews         Review[]
+  workspace       Workspace?
 
-  @@unique([userId])
   @@index([slug])
   @@index([status])
   @@map("vendors")
@@ -368,6 +373,7 @@ model Invoice {
   // Relations
   vendor          Vendor    @relation(fields: [vendorId], references: [id], onDelete: Cascade)
   project         Project?  @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  cards           Card[]
 
   @@unique([vendorId, invoiceNumber])
   @@index([vendorId])
@@ -580,7 +586,7 @@ model Notification {
   type            NotificationType
   title           String
   message         String    @db.Text
-  data            String?   @db.Json // بيانات إضافية
+  data            Json?     // بيانات إضافية
   read            Boolean   @default(false)
   readAt          DateTime?
   
@@ -603,6 +609,9 @@ enum NotificationType {
   REVIEW_RECEIVED
   VENDOR_VERIFIED
   SYSTEM_UPDATE
+  TASK_ASSIGNED
+  TASK_COMMENT
+  TASK_UPDATED
 }
 
 // ==================== SETTINGS ====================
@@ -633,4 +642,148 @@ model SystemSettings {
   updatedAt       DateTime  @updatedAt
 
   @@map("system_settings")
+}
+
+// ==================== MASAR (مسار - إدارة المهام) ====================
+
+model Workspace {
+  id        String   @id @default(cuid())
+  name      String
+  vendorId  String?  @unique // ربط المساحة بمتجر فكرتي لإصدار الفواتير من المهام
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  vendor    Vendor?           @relation(fields: [vendorId], references: [id], onDelete: SetNull)
+  members   WorkspaceMember[]
+  boards    Board[]
+
+  @@map("workspaces")
+}
+
+enum WorkspaceRole {
+  OWNER           // مالك المساحة
+  ADMIN           // مشرف
+  MEMBER          // عضو يعدّل
+  VIEWER          // مشاهد فقط
+}
+
+model WorkspaceMember {
+  id          String        @id @default(cuid())
+  workspaceId String
+  userId      String
+  role        WorkspaceRole @default(MEMBER)
+  createdAt   DateTime      @default(now())
+
+  // Relations
+  workspace   Workspace     @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  user        User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([workspaceId, userId])
+  @@index([userId])
+  @@map("workspace_members")
+}
+
+model Board {
+  id          String    @id @default(cuid())
+  workspaceId String
+  name        String
+  color       String    @default("c1")
+  createdById String?
+  archivedAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  // Relations
+  workspace   Workspace      @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  lists       BoardList[]
+  cards       Card[]
+  activities  CardActivity[]
+
+  @@index([workspaceId])
+  @@map("boards")
+}
+
+model BoardList {
+  id         String    @id @default(cuid())
+  boardId    String
+  title      String
+  position   Float
+  archivedAt DateTime?
+  createdAt  DateTime  @default(now())
+
+  // Relations
+  board      Board     @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  cards      Card[]
+
+  @@index([boardId])
+  @@map("board_lists")
+}
+
+model Card {
+  id          String    @id @default(cuid())
+  boardId     String
+  listId      String
+  title       String
+  description String    @default("") @db.Text
+  labels      String[]
+  dueDate     DateTime? @db.Date
+  done        Boolean   @default(false)
+  position    Float
+  checklist   Json      @default("[]") // [{id, text, done}]
+  createdById String?
+  invoiceId   String?
+  archivedAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  // Relations
+  board       Board          @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  list        BoardList      @relation(fields: [listId], references: [id], onDelete: Cascade)
+  createdBy   User?          @relation("CardCreator", fields: [createdById], references: [id], onDelete: SetNull)
+  invoice     Invoice?       @relation(fields: [invoiceId], references: [id], onDelete: SetNull)
+  assignees   CardAssignee[]
+  activities  CardActivity[]
+
+  @@index([boardId])
+  @@index([listId])
+  @@map("cards")
+}
+
+model CardAssignee {
+  cardId    String
+  userId    String
+  createdAt DateTime @default(now())
+
+  // Relations
+  card      Card     @relation(fields: [cardId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([cardId, userId])
+  @@index([userId])
+  @@map("card_assignees")
+}
+
+enum CardActivityKind {
+  COMMENT         // تعليق
+  ACTIVITY        // نشاط تلقائي
+}
+
+model CardActivity {
+  id        String           @id @default(cuid())
+  boardId   String
+  cardId    String
+  userId    String?
+  kind      CardActivityKind
+  text      String           @db.Text
+  createdAt DateTime         @default(now())
+
+  // Relations
+  board     Board            @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  card      Card             @relation(fields: [cardId], references: [id], onDelete: Cascade)
+  user      User?            @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([boardId, createdAt])
+  @@index([cardId, createdAt])
+  @@map("card_activities")
 }

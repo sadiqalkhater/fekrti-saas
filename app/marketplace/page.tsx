@@ -2,45 +2,53 @@
 
 import { useEffect, useState } from 'react';
 import axios from 'axios';
-import Link from 'next/link';
-import Image from 'next/image';
 import { SERVICE_CATEGORIES } from '@/utils/constants';
 import ServiceCard from '@/components/ServiceCard';
 import SearchBar from '@/components/SearchBar';
 import FilterSidebar from '@/components/FilterSidebar';
+import { useFavorites } from '@/hooks/useVendor';
+import { Service } from '@/types';
+
+type MarketService = Service & { vendor?: { businessName: string; slug: string } };
 
 export default function MarketplacePage() {
-  const [services, setServices] = useState([]);
-  const [filteredServices, setFilteredServices] = useState([]);
+  const [services, setServices] = useState<MarketService[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedCategory, setSelectedCategory] = useState('');
-  const [priceRange, setPriceRange] = useState([0, 50000]);
+  const [priceRange, setPriceRange] = useState<[number, number]>([0, 50000]);
+  const { isFavorite, addFavorite, removeFavorite } = useFavorites();
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState('newest');
 
-  // جلب الخدمات
+  // جلب الخدمات (بتأخير بسيط حتى لا نرسل طلبًا مع كل حرف)
   useEffect(() => {
-    const fetchServices = async () => {
+    const controller = new AbortController();
+    const timer = setTimeout(async () => {
       try {
         setLoading(true);
-        const response = await axios.get('/api/services', {
+        const response = await axios.get<MarketService[]>('/api/services', {
+          signal: controller.signal,
           params: {
-            category: selectedCategory,
+            category: selectedCategory || undefined,
             minPrice: priceRange[0],
             maxPrice: priceRange[1],
-            search: searchQuery,
+            search: searchQuery || undefined,
             sort: sortBy,
           },
         });
         setServices(response.data);
-      } catch (error) {
-        console.error('Error fetching services:', error);
-      } finally {
         setLoading(false);
+      } catch (error) {
+        if (!axios.isCancel(error)) {
+          console.error('Error fetching services:', error);
+          setLoading(false);
+        }
       }
+    }, 250);
+    return () => {
+      clearTimeout(timer);
+      controller.abort();
     };
-
-    fetchServices();
   }, [selectedCategory, priceRange, searchQuery, sortBy]);
 
   return (
@@ -67,7 +75,8 @@ export default function MarketplacePage() {
           {SERVICE_CATEGORIES.map((category) => (
             <button
               key={category.id}
-              onClick={() => setSelectedCategory(category.id)}
+              onClick={() => setSelectedCategory(selectedCategory === category.id ? '' : category.id)}
+              aria-pressed={selectedCategory === category.id}
               className={`p-4 rounded-lg text-center transition-all ${
                 selectedCategory === category.id
                   ? 'bg-fekrti-primary text-white'
@@ -105,7 +114,12 @@ export default function MarketplacePage() {
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {services.map((service) => (
-                  <ServiceCard key={service.id} service={service} />
+                  <ServiceCard
+                    key={service.id}
+                    service={service}
+                    favorite={isFavorite(service.id)}
+                    onToggleFavorite={() => (isFavorite(service.id) ? removeFavorite(service.id) : addFavorite(service.id))}
+                  />
                 ))}
               </div>
             )}

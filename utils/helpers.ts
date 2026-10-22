@@ -30,7 +30,7 @@ export function formatDateTime(date: Date | string): string {
  */
 export function formatNumber(num: number, decimals: number = 2): string {
   if (typeof num !== 'number') return '0';
-  return num.toLocaleString('ar-SA', {
+  return num.toLocaleString('ar-SA-u-nu-latn', {
     minimumFractionDigits: decimals,
     maximumFractionDigits: decimals,
   });
@@ -80,13 +80,21 @@ export function formatIBAN(iban: string): string {
 }
 
 /**
+ * رمز قصير للتاجر في الأرقام المتسلسلة.
+ * نأخذ آخر الأحرف لأن بداية معرّفات cuid متشابهة لكل ما أُنشئ في الفترة نفسها.
+ */
+function vendorCode(vendorId: string): string {
+  return vendorId.slice(-6).toUpperCase();
+}
+
+/**
  * تنسيق رقم الفاتورة
  */
 export function generateInvoiceNumber(vendorId: string, count: number): string {
   const date = new Date();
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, '0');
-  return `INV-${vendorId.substring(0, 4).toUpperCase()}-${year}-${month}-${String(count).padStart(4, '0')}`;
+  return `INV-${vendorCode(vendorId)}-${year}-${month}-${String(count).padStart(4, '0')}`;
 }
 
 /**
@@ -95,7 +103,7 @@ export function generateInvoiceNumber(vendorId: string, count: number): string {
 export function generateProposalNumber(vendorId: string, count: number): string {
   const date = new Date();
   const year = date.getFullYear();
-  return `PRO-${vendorId.substring(0, 4).toUpperCase()}-${year}-${String(count).padStart(4, '0')}`;
+  return `PRO-${vendorCode(vendorId)}-${year}-${String(count).padStart(4, '0')}`;
 }
 
 /**
@@ -104,7 +112,7 @@ export function generateProposalNumber(vendorId: string, count: number): string 
 export function generateProjectNumber(vendorId: string, count: number): string {
   const date = new Date();
   const year = date.getFullYear();
-  return `PRJ-${vendorId.substring(0, 4).toUpperCase()}-${year}-${String(count).padStart(4, '0')}`;
+  return `PRJ-${vendorCode(vendorId)}-${year}-${String(count).padStart(4, '0')}`;
 }
 
 // ==================== CALCULATIONS ====================

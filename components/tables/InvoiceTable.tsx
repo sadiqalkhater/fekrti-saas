@@ -10,12 +10,13 @@ import EditButton from '../ui/EditButton';
 
 interface InvoiceTableProps {
   invoices: Invoice[];
+  onDelete?: (id: string) => Promise<void>;
 }
 
-export default function InvoiceTable({ invoices }: InvoiceTableProps) {
+export default function InvoiceTable({ invoices, onDelete }: InvoiceTableProps) {
   return (
-    <div className="bg-white rounded-lg shadow overflow-hidden">
-      <table className="w-full">
+    <div className="bg-white rounded-lg shadow overflow-x-auto">
+      <table className="w-full min-w-[720px]">
         <thead className="bg-gray-100 border-b">
           <tr>
             <th className="px-6 py-4 text-right font-semibold text-fekrti-navy">رقم الفاتورة</th>
@@ -39,21 +40,21 @@ export default function InvoiceTable({ invoices }: InvoiceTableProps) {
                 <td className="px-6 py-4">{invoice.clientName}</td>
                 <td className="px-6 py-4 font-semibold">{formatCurrency(invoice.totalAmount)}</td>
                 <td className="px-6 py-4">
-                  <span className={`px-3 py-1 rounded-full text-sm font-medium ${status.color}`}>
+                  <span className={`px-3 py-1 rounded-full text-sm font-medium ${status.color} ${status.textColor}`}>
                     {status.label}
                   </span>
                 </td>
                 <td className="px-6 py-4 text-gray-600">{formatDate(invoice.invoiceDate)}</td>
                 <td className="px-6 py-4">
-                  <div className="flex justify-center gap-2">
-                    <EditButton href={`/dashboard/invoices/${invoice.id}/edit`} />
-                    <DeleteButton
-                      onDelete={() => {
-                        // سيتم تنفيذ الحذف هنا
-                        console.log('Delete invoice:', invoice.id);
-                      }}
-                    />
-                  </div>
+                  {/* التعديل والحذف للمسودات فقط؛ الفاتورة المرسلة لا تتغير */}
+                  {invoice.status === 'DRAFT' ? (
+                    <div className="flex justify-center gap-2">
+                      <EditButton href={`/dashboard/invoices/${invoice.id}/edit`} />
+                      {onDelete && <DeleteButton onDelete={() => onDelete(invoice.id)} />}
+                    </div>
+                  ) : (
+                    <div className="text-center text-sm text-gray-400">—</div>
+                  )}
                 </td>
               </tr>
             );

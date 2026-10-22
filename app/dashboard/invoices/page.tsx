@@ -1,44 +1,56 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import axios from 'axios';
 import Link from 'next/link';
-import { useVendor } from '@/hooks/useVendor';
-import InvoiceTable from '../components/InvoiceTable';
+import toast from 'react-hot-toast';
+import { apiError, useVendor } from '@/hooks/useVendor';
+import InvoiceTable from '@/components/tables/InvoiceTable';
+import CreateVendor from '@/components/dashboard/CreateVendor';
 import { INVOICE_STATUSES } from '@/utils/constants';
+import { Invoice } from '@/types';
 
 export default function InvoicesPage() {
-  const { vendor } = useVendor();
-  const [invoices, setInvoices] = useState([]);
+  const { vendor, hasVendor, loading: vendorLoading, createVendor } = useVendor();
+  const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('');
 
-  useEffect(() => {
-    const fetchInvoices = async () => {
-      if (!vendor?.id) return;
-      try {
-        setLoading(true);
-        const response = await axios.get('/api/invoices', {
-          params: {
-            vendorId: vendor.id,
-            status: filter || undefined,
-          },
-        });
-        setInvoices(response.data.data);
-      } catch (error) {
-        console.error('Error fetching invoices:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchInvoices();
+  const fetchInvoices = useCallback(async () => {
+    if (!vendor?.id) return;
+    try {
+      setLoading(true);
+      const response = await axios.get('/api/invoices', {
+        params: { status: filter || undefined, take: 100 },
+      });
+      setInvoices(response.data.data);
+    } catch (error) {
+      toast.error(apiError(error, 'خطأ في جلب الفواتير'));
+    } finally {
+      setLoading(false);
+    }
   }, [vendor?.id, filter]);
+
+  useEffect(() => {
+    fetchInvoices();
+  }, [fetchInvoices]);
+
+  const deleteInvoice = async (id: string) => {
+    try {
+      await axios.delete(`/api/invoices/${id}`);
+      setInvoices((list) => list.filter((i) => i.id !== id));
+    } catch (error) {
+      // DeleteButton يعرض رسالة هذا الخطأ
+      throw new Error(apiError(error, 'خطأ في الحذف'));
+    }
+  };
+
+  if (!vendorLoading && !hasVendor) return <CreateVendor onCreate={createVendor} />;
 
   return (
     <div className="p-8">
       {/* الرأس */}
-      <div className="flex justify-between items-center mb-8">
+      <div className="flex flex-wrap gap-4 justify-between items-center mb-8">
         <div>
           <h1 className="text-3xl font-bold text-fekrti-navy">الفواتير</h1>
           <p className="text-gray-600 mt-1">إدارة فواتيرك وتتبع المدفوعات</p>
@@ -78,7 +90,7 @@ export default function InvoicesPage() {
       {loading ? (
         <div className="text-center py-12">جاري التحميل...</div>
       ) : (
-        <InvoiceTable invoices={invoices} />
+        <InvoiceTable invoices={invoices} onDelete={deleteInvoice} />
       )}
     </div>
   );

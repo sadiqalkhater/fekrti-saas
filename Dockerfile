@@ -18,7 +18,6 @@ COPY hooks ./hooks
 COPY lib ./lib
 COPY types ./types
 COPY utils ./utils
-COPY styles ./styles
 COPY public ./public
 COPY next.config.js ./
 COPY tailwind.config.js ./
@@ -44,6 +43,7 @@ COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/.next ./.next
 COPY --from=builder /app/public ./public
 COPY --from=builder /app/prisma ./prisma
+COPY --from=builder /app/next.config.js ./
 
 # إنشاء مستخدم غير جذر
 RUN addgroup -g 1001 -S nodejs
