@@ -4,11 +4,16 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { generateInvoiceNumber } from '@/utils/helpers';
+import { getSessionUser, canAccessVendor } from '@/lib/auth';
 
 // ==================== GET /api/invoices ====================
 
 export async function GET(request: NextRequest) {
   try {
+    const user = await getSessionUser(request);
+    if (!user) {
+      return NextResponse.json({ error: 'غير مصرح' }, { status: 401 });
+    }
     const searchParams = request.nextUrl.searchParams;
     const vendorId = searchParams.get('vendorId');
     const status = searchParams.get('status');
@@ -21,6 +26,10 @@ export async function GET(request: NextRequest) {
         { error: 'vendorId مطلوب' },
         { status: 400 }
       );
+    }
+
+    if (!(await canAccessVendor(user, vendorId))) {
+      return NextResponse.json({ error: 'غير مصرح' }, { status: 403 });
     }
 
     const where: any = { vendorId };
@@ -57,6 +66,11 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
+    const user = await getSessionUser(request);
+    if (!user) {
+      return NextResponse.json({ error: 'غير مصرح' }, { status: 401 });
+    }
+
     const body = await request.json();
     const { vendorId, projectId, items, clientName, clientEmail, dueDate, notes } = body;
 
@@ -65,6 +79,10 @@ export async function POST(request: NextRequest) {
         { error: 'البيانات المطلوبة غير كاملة' },
         { status: 400 }
       );
+    }
+
+    if (!(await canAccessVendor(user, vendorId))) {
+      return NextResponse.json({ error: 'غير مصرح' }, { status: 403 });
     }
 
     // الحصول على عدد الفواتير لتوليد الرقم

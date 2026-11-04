@@ -3,6 +3,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
+import { getSessionUser, canAccessVendor } from '@/lib/auth';
 
 // ==================== GET /api/vendors/[id] ====================
 
@@ -18,9 +19,7 @@ export async function GET(
           select: {
             id: true,
             name: true,
-            email: true,
             avatar: true,
-            phone: true,
           },
         },
         services: {
@@ -57,6 +56,11 @@ export async function PUT(
   { params }: { params: { id: string } }
 ) {
   try {
+    const user = await getSessionUser(request);
+    if (!user) {
+      return NextResponse.json({ error: 'غير مصرح' }, { status: 401 });
+    }
+
     const body = await request.json();
 
     // التحقق من الصلاحيات (يجب أن يكون التاجر هو صاحب الحساب)
@@ -69,6 +73,10 @@ export async function PUT(
         { error: 'التاجر غير موجود' },
         { status: 404 }
       );
+    }
+
+    if (!(await canAccessVendor(user, params.id))) {
+      return NextResponse.json({ error: 'غير مصرح' }, { status: 403 });
     }
 
     // تحديث البيانات
@@ -90,7 +98,7 @@ export async function PUT(
         logo: body.logo,
         banner: body.banner,
       },
-      include: { user: true },
+      include: { user: { select: { id: true, name: true, avatar: true } } },
     });
 
     return NextResponse.json(updatedVendor);
@@ -110,6 +118,11 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   try {
+    const user = await getSessionUser(request);
+    if (!user) {
+      return NextResponse.json({ error: 'غير مصرح' }, { status: 401 });
+    }
+
     // حذف التاجر وجميع بيانات المشاريع والخدمات
     const vendor = await prisma.vendor.findUnique({
       where: { id: params.id },
@@ -121,6 +134,10 @@ export async function DELETE(
         { error: 'التاجر غير موجود' },
         { status: 404 }
       );
+    }
+
+    if (!(await canAccessVendor(user, params.id))) {
+      return NextResponse.json({ error: 'غير مصرح' }, { status: 403 });
     }
 
     // حذف التاجر (سيحذف تلقائياً جميع البيانات المرتبطة)
